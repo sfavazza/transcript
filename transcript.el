@@ -35,15 +35,46 @@
 
 ;;; Code:
 
-;; requirements
-(require 'hi-lock)
-
 ;; =================================================================================================
 ;; user customizations
 (defgroup transcript nil
   "Transcript mode customization."
   :group 'convenience
   :link (url-link "https://github.com/sfavazza/transcript"))
+
+(defgroup transcript-default-faces nil
+  "Transcript default faces to highlight the line of interest"
+  :group 'transcript)
+
+
+;; =================================================================================================
+;; faces
+;; NOTE: a taste of the colors can be achieved with rainbow-mode enabled
+(defface hi-fatal-fg
+  '((t (:weight bold :foreground "black" :background "goldenrod")))
+  "Highlighting for fatal notes."
+  :group 'transcript-default-faces)
+
+(defface hi-critical-fg
+  '((t (:weight bold :foreground "white" :background "dark red")))
+  "Highlighting for critical notes."
+  :group 'transcript-default-faces)
+
+(defface hi-error-fg
+  '((t (:weight bold :foreground "red1")))
+  "Highlighting for errors."
+  :group 'transcript-default-faces)
+
+(defface hi-warning-fg
+  '((t (:weight bold :foreground "OrangeRed")))
+  "Highlighting for warnings."
+  :group 'transcript-default-faces)
+
+(defface hi-note-fg
+  '((t
+     (:weight bold :foreground "DodgerBlue1")))
+  "Highlighting for notes."
+  :group 'transcript-default-faces)
 
 
 ;; =================================================================================================
