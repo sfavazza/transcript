@@ -37,25 +37,29 @@
 
 ;; =================================================================================================
 ;; user customizations
+
+;; groups
 (defgroup transcript nil
   "Transcript mode customization."
-  :group 'convenience
-  :link (url-link "https://github.com/sfavazza/transcript"))
+  :group 'convenience)
 
 (defgroup transcript-default-faces nil
   "Transcript default faces to highlight the line of interest"
   :group 'transcript)
 
+(defvar transcript-re-ignore-case t
+  "If `non-nil' all defined regular expression used in the highlighting profiles are `case-INsensitive',
+  if `nil' they will be `case-sensitive'")
 
 ;; =================================================================================================
 ;; faces
 ;; NOTE: a taste of the colors can be achieved with rainbow-mode enabled
-(defface hi-fatal-fg
+(defface hi-fatal-fbg
   '((t (:weight bold :foreground "black" :background "goldenrod")))
   "Highlighting for fatal notes."
   :group 'transcript-default-faces)
 
-(defface hi-critical-fg
+(defface hi-critical-fbg
   '((t (:weight bold :foreground "white" :background "dark red")))
   "Highlighting for critical notes."
   :group 'transcript-default-faces)
@@ -78,9 +82,15 @@
 
 
 ;; =================================================================================================
-;; mode-support definitions
+;; mode support definitions
 
-;;TODO: definition of profile concept: list of cons (reg-exp . face)
+;; simply create a list to store all the highlight profiles
+(setq transcript-profile-list '(("transcript-default-profile"
+                                 ("^.*\\(?:fatal\\).*$" . 'hi-fatal-fbg)
+                                 ("^.*\\(?:critical\\).*$" . 'hi-critical-fbg)
+                                 ("^.*\\(?:error\\).*$" . 'hi-error-fg)
+                                 ("^.*\\(?:warning\\).*$" . 'hi-warning-fg)
+                                 ("^.*\\(?:note\\).*$" . 'hi-note-fg))))
 
 ;; =================================================================================================
 ;; mode implementation
@@ -92,19 +102,21 @@
 
   ;; -----------------------------------------------------------------------------------------------
   ;; body of the derived mode
-
-  ;; disable automatic fontification to let the user decide how what should be highlighted
-
-  ;; define keywords for font-lock mode
-  ;; source: https://www.gnu.org/software/emacs/manual/html_node/elisp/Search_002dbased-Fontification.html#Search_002dbased-Fontification
   (setq transcript-font-lock-keywords
-        '("error")           ; errors
-        )
-  (setq font-lock-defaults '(("[Ee]rror" . 'hi-red-b)))
+        (let* ((profiles
+                ;; create the list of available profiles
+                (mapcar 'car transcript-profile-list))
+               (profile-sel
+                ;; ask user for the profile to be adopted
+                (completing-read "Highlight profile: " profiles)))
+          ;; define keywords for font-lock mode
+          (cdr (assoc profile-sel transcript-profile-list))))
 
-  ;; -----------------------------------------------------------------------------------------------
-  ;; define the most common faces
-  
+  (setq font-lock-defaults
+        '(transcript-font-lock-keywords nil transcript-re-ignore-case))
+  ;; re-fontify current buffer as the defaults are directly changed
+  (font-lock-refresh-defaults)
   )
 
+(provide 'transcript)
 ;;; transcript.el ends here
