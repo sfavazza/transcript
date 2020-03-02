@@ -41,7 +41,8 @@
 ;; groups
 (defgroup transcript nil
   "Transcript mode customization."
-  :group 'convenience)
+  :group 'convenience
+  :link '(url-link "https://github.com/sfavazza/transcript-mode"))
 
 (defgroup transcript-default-faces nil
   "Transcript default faces to highlight the line of interest"
