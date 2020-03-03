@@ -55,43 +55,89 @@
 ;; =================================================================================================
 ;; faces
 ;; NOTE: a taste of the colors can be achieved with rainbow-mode enabled
-(defface hi-fatal-fbg
+(defface hi-fatal
   '((t (:weight bold :foreground "black" :background "goldenrod")))
   "Highlighting for fatal notes."
   :group 'transcript-default-faces)
 
-(defface hi-critical-fbg
+(defface hi-critical
   '((t (:weight bold :foreground "white" :background "dark red")))
   "Highlighting for critical notes."
   :group 'transcript-default-faces)
 
-(defface hi-error-fg
+(defface hi-error
   '((t (:weight bold :foreground "red1")))
   "Highlighting for errors."
   :group 'transcript-default-faces)
 
-(defface hi-warning-fg
-  '((t (:weight bold :foreground "OrangeRed")))
+(defface hi-warning
+  '((t (:weight bold :foreground "DarkOrange")))
   "Highlighting for warnings."
   :group 'transcript-default-faces)
 
-(defface hi-note-fg
+(defface hi-note
   '((t
-     (:weight bold :foreground "DodgerBlue1")))
+     (:weight bold :foreground "green")))
   "Highlighting for notes."
   :group 'transcript-default-faces)
 
+;; =================================================================================================
+;; moving functions
+
+;; the movements are based on the text highlighting as it constitute a text property change.
+;; TODO: define a macro to define a movement template function depending on the given profile template
+;; :fatal :critical :error :warning :note
 
 ;; =================================================================================================
 ;; mode support definitions
 
+(defun transcript-define-profile (name &rest msg-level)
+  "Define a new highlithing profile called NAME.
+
+The MSG-LEVEL is a list of keyword arguments (`:fatal', `:critical', `:error', `:warning', `:note')
+whose value is a regular-expression used to look for the specific line of interest. The face is
+automatically selected according to the keyword."
+
+  ;; when one keyword is not indicated it is simply omitted from the font-lock keywords
+  (let ((profile '()))
+
+    (let ((regexp (plist-get msg-level :fatal)))
+      (when regexp
+        (add-to-list 'profile `(,regexp . 'hi-fatal))))
+
+    (let ((regexp (plist-get msg-level :critical)))
+      (when regexp
+        (add-to-list 'profile `(,regexp . 'hi-critical))))
+
+    (let ((regexp (plist-get msg-level :error)))
+      (when regexp
+        (add-to-list 'profile `(,regexp . 'hi-error))))
+
+    (let ((regexp (plist-get msg-level :warning)))
+      (when regexp
+        (add-to-list 'profile `(,regexp . 'hi-warning))))
+
+    (let ((regexp (plist-get msg-level :note)))
+      (when regexp
+        (add-to-list 'profile `(,regexp . 'hi-note))))
+
+    ;;TODO: define a plist keeping track of the defined keywords so that when defining the moving
+    ;;functions they will be aware of the face property to look for
+
+    ;; return the profile list
+    (add-to-list 'profile name)))
+
 ;; simply create a list to store all the highlight profiles
-(setq transcript-profile-list '(("transcript-default-profile"
-                                 ("^.*\\(?:fatal\\).*$" . 'hi-fatal-fbg)
-                                 ("^.*\\(?:critical\\).*$" . 'hi-critical-fbg)
-                                 ("^.*\\(?:error\\).*$" . 'hi-error-fg)
-                                 ("^.*\\(?:warning\\).*$" . 'hi-warning-fg)
-                                 ("^.*\\(?:note\\).*$" . 'hi-note-fg))))
+(setq transcript-profile-list
+      '((transcript-define-profile "default"
+                                   :critical ("^.*\\(?:critical\\).*$" . 'hi-critical)
+                                   :fatal ("^.*\\(?:fatal\\).*$" . 'hi-fatal)
+                                   :error ("^.*\\(?:error\\).*$" . 'hi-error)
+                                   :warning ("^.*\\(?:warning\\).*$" . 'hi-warning)
+                                   :note ("^.*\\(?:note\\).*$" . 'hi-note))
+        (transcript-define-profile "modelsim"
+                                   :error ("^\\*\\{2\\}\\s-Error:.*$" . 'hi-error)
+                                   :warning ("^\\*\\{2\\}\\s-Error:.*$" . 'hi-warning))))
 
 ;; =================================================================================================
 ;; mode implementation
