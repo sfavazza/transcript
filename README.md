@@ -30,30 +30,25 @@ The tool logs analysis gets easy and time-saving with this mode, which features:
   interest.
 - Automatically revert the visited log file.
 - The buffer is opened in read-mode to ensure any accidental modification from the user.
-- Extensible line of interest classes.
 
 ### Highlighting Options ###
 
-    todo
+The user can define her/his own highlighting scheme to adapt to the specific tool's output being
+inspected.
+For instance the following snippet shows how a to define a profile for ModelSim <sup>&reg;</sup>:
+
+```lisp
+(use-package transcript
+  :config
+  (add-to-list 'transcript-profile-list
+               (transcript-define-profile "modelsim"
+                                          :error "^\\*\\{2\\}\\s-Error:.*$"
+                                          :warning "^\\*\\{2\\}\\s-Warning:.*$")))
+```
     
 ### Log File Navigation ###
 
     todo
-    
-### Line of Interest Definition ###
 
-As the no tools out there agree on a common standard to report the process of their tasks, the user
-might need to define a `profile` according to the specific tool generating a log output.
-
-    todo: show some example about how to define them.
-    It should be a set of definition to run during the package initialization:
-    
-```lisp
-(use-package transcript
-    :init
-    ;; profile for menthor modelsim
-    
-    ;; profile for intel quartus
-    )
-```
-
+      * Show the default key-bindings for moving around the log file
+      * Add some gif to show the moving feature
