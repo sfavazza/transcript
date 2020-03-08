@@ -48,9 +48,28 @@
   "Transcript default faces to highlight the line of interest"
   :group 'transcript)
 
-(defvar transcript-re-ignore-case t
+(defgroup transcript-search nil
+  "Transcript search options"
+  :group 'transcript)
+
+;; =================================================================================================
+;; search options
+
+(defcustom transcript-re-ignore-case t
   "If `non-nil' all defined regular expression used in the highlighting profiles are `case-INsensitive',
-  if `nil' they will be `case-sensitive'")
+  if `nil' they will be `case-sensitive'"
+  :group 'transcript-search)
+
+;; TODO: this var should be used a chunk dimension of the text to be checked every time a line of
+;; interest if searched for. So it should be used to set the LIMIT value of the function searching
+;; for a characteristic change as: LIMIT = (+ (point) transcript-other-line-search-limit)
+;; (defcustom transcript-other-line-search-limit nil
+;;   "Define a limit to search for the next loi.
+
+;; When nil search till the end of the buffer (for next line search) or till the start of the buffer
+;; (for previous line search). When non-nil it must be an integer, which indicates the point where the 
+;; "
+;;   :group transcript-search)
 
 ;; =================================================================================================
 ;; faces
@@ -82,11 +101,84 @@
   :group 'transcript-default-faces)
 
 ;; =================================================================================================
-;; moving functions
+;; moving functions (based on the highlighting property changes)
 
-;; the movements are based on the text highlighting as it constitute a text property change.
-;; TODO: define a macro to define a movement template function depending on the given profile template
-;; :fatal :critical :error :warning :note
+(defun transcript--warn-message (loi-keyword)
+  "Just warn the user that no more lines of the specified type are found.
+
+LOI is the keyword to be used in the message"
+  (message "no more %s lines found" (cdr (assoc loi-keyword transcript-loi-strings))))
+
+(defmacro transcript-define-loi-move (name loi-keyword search-dir)
+  "Blueprint to define the function called NAME to navigate among the loi.
+
+LOI-KEYWORD is one of the keywords: `fatal', `critical', `error', `warning', `note'.
+While the SEARCH-DIR is an integer indicating the direction where to search for the loi, in
+particular `1' to look forward and `-1' to look backward."
+
+  ;; In emacs only functions to detect a property change are available, hence the next line must be
+  ;; first analyzed to check for the loi.
+
+  ;; TODO: the following instruction is wrong as it does not assign the value to the "doc-string"
+  ;; function on-the-fly, string substitutions are better
+  `(setq doc-string (let ((prev-or-next (if (= ,search-dir 1)
+                                            "next"
+                                          "previous"))
+                          (loi-string (cdr (assoc ,loi-keyword transcript-loi-strings))))
+                      (format "Move to the %s found %s line (if any).
+  Warn the user if no further %s lines can be found." prev-or-next loi-string loi-string)))
+
+  `(defun ,name ()
+     "TODO: add a mechanism to automatically generate the function doc-strig"
+     (interactive)
+     (let ((pnt)                           ; symbol where point will be stored
+           (starting-point (point))        ; keep track of the last
+           (continue-search t)
+           ;; Ensure to get the same lisp-object as the face found in text, otherwise the text
+           ;; property comparison yield always "nil". Hence use "caddr" instead of "cdr" function.
+           (target-face (caddr (assoc ,loi-keyword transcript-loi-faces)))
+           (search-func))
+
+       ;; assign the search function
+       (if (= ,search-dir 1)
+           (fset 'search-func 'next-single-property-change)
+         (fset 'search-func 'previous-single-property-change))
+
+       (save-excursion
+         (beginning-of-line)
+         (forward-line ,search-dir)
+         (setq pnt (point))
+
+         ;; Ensure the point haven't reached the beginning of the buffer, the pointer isn't nil and the
+         ;; research can continue.
+         (while (and pnt continue-search)
+           (if (or (eq (get-text-property pnt 'face) target-face) (bobp))
+               (setq continue-search nil)
+             (setq pnt (search-func pnt 'face (current-buffer) nil))))
+         (when (or
+                ;; Reaching the end of the buffer means that no other lines with the target face were
+                ;; found. Hence the point should remain in its first position.
+                (bobp)
+                ;; When the property search returns nil, the line cannot be found till the end of the
+                ;; buffer.
+                (not pnt))
+           (setq pnt starting-point)
+           (transcript--warn-message ,loi-keyword)))
+
+       ;; point to the last found line, or remain to the starting point when none were found
+       (goto-char pnt))))
+
+(transcript-define-loi-move transcript-next-fatal :fatal 1)
+(transcript-define-loi-move transcript-previous-fatal :fatal -1)
+(transcript-define-loi-move transcript-next-critical :critical 1)
+(transcript-define-loi-move transcript-previous-critical :critical -1)
+(transcript-define-loi-move transcript-next-error :error 1)
+(transcript-define-loi-move transcript-previous-error :error -1)
+(transcript-define-loi-move transcript-next-warning :warning 1)
+(transcript-define-loi-move transcript-previous-warning :warning -1)
+(transcript-define-loi-move transcript-next-note :note 1)
+(transcript-define-loi-move transcript-previous-note :note -1)
+
 
 ;; =================================================================================================
 ;; mode support definitions
@@ -96,6 +188,12 @@
                              (:error . 'hi-error)
                              (:warning . 'hi-warning)
                              (:note . 'hi-note)))
+
+(setq transcript-loi-strings '((:fatal . "FATAL")
+                               (:critical . "CRITICAL")
+                               (:error . "ERROR")
+                               (:warning . "WARNING")
+                               (:note . "NOTE")))
 
 (defun transcript-define-profile (name &rest loi-regexps)
   "Define a new highlithing profile called NAME.
@@ -135,19 +233,32 @@ The face is automatically selected according to the keyword."
 (setq transcript-profile-list
       (list
        (transcript-define-profile "default"
-                                  :critical "^.*\\(?:critical\\).*$"
                                   :fatal "^.*\\(?:fatal\\).*$"
+                                  :critical "^.*\\(?:critical\\).*$"
                                   :error "^.*\\(?:error\\).*$"
                                   :warning "^.*\\(?:warning\\).*$"
                                   :note "^.*\\(?:note\\).*$")))
 
 ;; =================================================================================================
 ;; mode implementation
+
 (define-derived-mode transcript-mode
   ;; deriving from the "special" mode, the buffer becomes read-only
   special-mode "Transcript"
   "An emacs mode to ease tools' output log files analysis."
   :group 'transcript
+
+  ;; define the single-key mapping
+  (define-key transcript-mode-map (kbd "f") #'transcript-next-fatal)
+  (define-key transcript-mode-map (kbd "F") #'transcript-previous-fatal)
+  (define-key transcript-mode-map (kbd "c") #'transcript-next-critical)
+  (define-key transcript-mode-map (kbd "C") #'transcript-previous-critical)
+  (define-key transcript-mode-map (kbd "e") #'transcript-next-error)
+  (define-key transcript-mode-map (kbd "E") #'transcript-previous-error)
+  (define-key transcript-mode-map (kbd "w") #'transcript-next-warning)
+  (define-key transcript-mode-map (kbd "W") #'transcript-previous-warning)
+  (define-key transcript-mode-map (kbd "n") #'transcript-next-note)
+  (define-key transcript-mode-map (kbd "N") #'transcript-previous-note)
 
   ;; -----------------------------------------------------------------------------------------------
   ;; body of the derived mode

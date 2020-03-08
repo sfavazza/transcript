@@ -1,8 +1,8 @@
 # Transcript Mode #
 
 Emacs mode for handy log file analysis. It is useful to inspect usually text based tools output log files.
-This mode offers line highlighting of the most relevant lines like: `fatal`, `errors`, `warnings`, `critical
-warnings`, `note`.
+This mode offers line highlighting of the lines-of-interest (loi) like: `fatal`, `errors`,
+`warnings`, `critical, warnings`, `note`.
 
 Basic Configuration
 -------------------
@@ -48,7 +48,15 @@ For instance the following snippet shows how a to define a profile for ModelSim 
     
 ### Log File Navigation ###
 
+As the buffer is read-only, it is possible to define single key functions. The user can move around
+the line-of-interests (loi) in forward direction using a lower-case letter and/or in backward
+direction using an upper-case letter.
+
+The letters corresponds to the first one of the `loi` keywords (`fatal`, `errors`, `warnings`,
+`critical, warnings`, `note`).
+
+For instance `e` calls `transcript-next-error`, `F` calls `transcript-previous-fatal` and so on...
+
     todo
 
-      * Show the default key-bindings for moving around the log file
-      * Add some gif to show the moving feature
+        * Add some gif to show the moving feature
