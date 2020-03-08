@@ -91,71 +91,72 @@
 ;; =================================================================================================
 ;; mode support definitions
 
-(defun transcript-define-profile (name &rest msg-level)
+(setq transcript-loi-faces '((:fatal . 'hi-fatal)
+                             (:critical . 'hi-critical)
+                             (:error . 'hi-error)
+                             (:warning . 'hi-warning)
+                             (:note . 'hi-note)))
+
+(defun transcript-define-profile (name &rest loi-regexps)
   "Define a new highlithing profile called NAME.
 
-The MSG-LEVEL is a list of keyword arguments (`:fatal', `:critical', `:error', `:warning', `:note')
-whose value is a regular-expression used to look for the specific line of interest. The face is
-automatically selected according to the keyword."
+The LOI-REGEXPS is a list of cons of the form (:KEYWORD . REGEXP).
+Where the :KEYWORD is one of `:fatal', `:critical', `:error', `:warning', `:note' and REGEXP is the
+regular expression string to match a line of interest (loi).
+The face is automatically selected according to the keyword."
 
-  ;; when one keyword is not indicated it is simply omitted from the font-lock keywords
-  (let ((profile '()))
+  ;; The LOI-REGEXP argument is consumed to extract the keywords and relative regular expressions.
+  ;; The faces are extracted by the internal list of loi key-words.  
+  ;; When one keyword is not indicated it is simply omitted from the font-lock keywords
+  (let ((profile '())
+        (regexp-list loi-regexps))
 
-    (let ((regexp (plist-get msg-level :fatal)))
-      (when regexp
-        (add-to-list 'profile `(,regexp . 'hi-fatal))))
+    ;; define an empty p-list for the line of interest (loi) of the created profile
+    (put 'profile :loi-faces '())
 
-    (let ((regexp (plist-get msg-level :critical)))
-      (when regexp
-        (add-to-list 'profile `(,regexp . 'hi-critical))))
+    (while regexp-list
 
-    (let ((regexp (plist-get msg-level :error)))
-      (when regexp
-        (add-to-list 'profile `(,regexp . 'hi-error))))
+      (let* ((loi-keyword (car regexp-list))
+             (loi-regexp (cadr regexp-list))
+             (loi-face (cdr (assoc loi-keyword transcript-loi-faces))))
+        ;; Add the loi face to the profile property, so that the moving functions can identify
+        ;; whether their target loi is described in the defined profile.
+        (put 'profile :loi-faces (append (get 'profile :loi-faces) `(,loi-face)))
+        ;; add a cons with the regexp and face to the profile being defined
+        (add-to-list 'profile `(,loi-regexp . ,loi-face)))
 
-    (let ((regexp (plist-get msg-level :warning)))
-      (when regexp
-        (add-to-list 'profile `(,regexp . 'hi-warning))))
-
-    (let ((regexp (plist-get msg-level :note)))
-      (when regexp
-        (add-to-list 'profile `(,regexp . 'hi-note))))
-
-    ;;TODO: define a plist keeping track of the defined keywords so that when defining the moving
-    ;;functions they will be aware of the face property to look for
+      ;; consume the list
+      (setq regexp-list (cddr regexp-list)))
 
     ;; return the profile list
     (add-to-list 'profile name)))
 
 ;; simply create a list to store all the highlight profiles
 (setq transcript-profile-list
-      '((transcript-define-profile "default"
-                                   :critical ("^.*\\(?:critical\\).*$" . 'hi-critical)
-                                   :fatal ("^.*\\(?:fatal\\).*$" . 'hi-fatal)
-                                   :error ("^.*\\(?:error\\).*$" . 'hi-error)
-                                   :warning ("^.*\\(?:warning\\).*$" . 'hi-warning)
-                                   :note ("^.*\\(?:note\\).*$" . 'hi-note))
-        (transcript-define-profile "modelsim"
-                                   :error ("^\\*\\{2\\}\\s-Error:.*$" . 'hi-error)
-                                   :warning ("^\\*\\{2\\}\\s-Error:.*$" . 'hi-warning))))
+      (list
+       (transcript-define-profile "default"
+                                  :critical "^.*\\(?:critical\\).*$"
+                                  :fatal "^.*\\(?:fatal\\).*$"
+                                  :error "^.*\\(?:error\\).*$"
+                                  :warning "^.*\\(?:warning\\).*$"
+                                  :note "^.*\\(?:note\\).*$")))
 
 ;; =================================================================================================
 ;; mode implementation
 (define-derived-mode transcript-mode
   ;; deriving from the "special" mode, the buffer becomes read-only
   special-mode "Transcript"
-  "An emacs mode to ease tools output log files analysis."
+  "An emacs mode to ease tools' output log files analysis."
   :group 'transcript
 
   ;; -----------------------------------------------------------------------------------------------
   ;; body of the derived mode
   (setq transcript-font-lock-keywords
-        (let* ((profiles
-                ;; create the list of available profiles
-                (mapcar 'car transcript-profile-list))
-               (profile-sel
-                ;; ask user for the profile to be adopted
-                (completing-read "Highlight profile: " profiles)))
+        (let* (
+               ;; create the list of available profiles
+               (profiles (mapcar 'car transcript-profile-list))
+               ;; ask user for the profile to be adopted
+               (profile-sel (completing-read "Highlight profile: " profiles)))
           ;; define keywords for font-lock mode
           (cdr (assoc profile-sel transcript-profile-list))))
 
