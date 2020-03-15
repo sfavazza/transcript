@@ -103,6 +103,12 @@
 ;; =================================================================================================
 ;; moving functions (based on the highlighting property changes)
 
+(setq transcript-loi-strings '((:fatal . "FATAL")
+                               (:critical . "CRITICAL")
+                               (:error . "ERROR")
+                               (:warning . "WARNING")
+                               (:note . "NOTE")))
+
 (defun transcript--warn-message (loi-keyword)
   "Just warn the user that no more lines of the specified type are found.
 
@@ -154,7 +160,7 @@ Warn the user if no further %s lines can be found." prev-or-next loi-string loi-
                (setq continue-search nil)
              (setq pnt (search-func pnt 'face (current-buffer) nil))))
          (when (or
-                ;; Reaching the end of the buffer means that no other lines with the target face were
+                ;; Reaching the beginning of the buffer means that no other lines with the target face were
                 ;; found. Hence the point should remain in its first position.
                 (bobp)
                 ;; When the property search returns nil, the line cannot be found till the end of the
@@ -186,12 +192,6 @@ Warn the user if no further %s lines can be found." prev-or-next loi-string loi-
                              (:error . 'hi-error)
                              (:warning . 'hi-warning)
                              (:note . 'hi-note)))
-
-(setq transcript-loi-strings '((:fatal . "FATAL")
-                               (:critical . "CRITICAL")
-                               (:error . "ERROR")
-                               (:warning . "WARNING")
-                               (:note . "NOTE")))
 
 (defun transcript-define-profile (name &rest loi-regexps)
   "Define a new highlithing profile called NAME.
